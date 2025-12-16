@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>IPMA Viewer</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <div>
+          <h1>IPMA Weather</h1>
+          <p class="sub">Dados locais (SQLite) sincronizados do IPMA</p>
+        </div>
+        <div class="pill" id="pillStatus">offline</div>
+      </header>
+
+      <section class="card controls">
+        <div class="grid">
+          <label>
+            Procurar cidade
+            <input id="search" type="text" placeholder="ex: Lisboa, Porto..." />
+          </label>
+
+          <label>
+            Cidade
+            <select id="citySelect"></select>
+          </label>
+
+          <label>
+            Data (opcional)
+            <input id="date" type="date" />
+          </label>
+
+          <button id="btnLoad">Ver previsão</button>
+        </div>
+        <div class="hint" id="status"></div>
+      </section>
+
+      <section class="row">
+        <section class="card hero">
+          <div class="heroTop">
+            <div>
+              <div class="kicker" id="heroKicker">—</div>
+              <div class="heroCity" id="heroCity">Seleciona uma cidade</div>
+              <div class="heroMeta" id="heroMeta">—</div>
+            </div>
+            <div class="badge" id="badgeRain">—</div>
+          </div>
+
+          <div class="metrics">
+            <div class="metric">
+              <div class="metricLabel">T. mínima</div>
+              <div class="metricValue" id="mTmin">—</div>
+            </div>
+            <div class="metric">
+              <div class="metricLabel">T. máxima</div>
+              <div class="metricValue" id="mTmax">—</div>
+            </div>
+            <div class="metric">
+              <div class="metricLabel">Amplitude</div>
+              <div class="metricValue" id="mAmp">—</div>
+            </div>
+            <div class="metric">
+              <div class="metricLabel">Vento (classe)</div>
+              <div class="metricValue" id="mWind">—</div>
+            </div>
+          </div>
+
+          <div class="bars">
+            <div class="bar">
+              <div class="barTop">
+                <span>Prob. chuva</span>
+                <span id="rainPct">—</span>
+              </div>
+              <div class="barTrack"><div class="barFill" id="rainFill"></div></div>
+            </div>
+
+            <div class="bar">
+              <div class="barTop">
+                <span>“Conforto” (estimado)</span>
+                <span id="comfortPct">—</span>
+              </div>
+              <div class="barTrack"><div class="barFill" id="comfortFill"></div></div>
+              <div class="tiny">Heurística simples: penaliza chuva e extremos de temperatura.</div>
+            </div>
+          </div>
+
+          <div class="chartCard">
+            <div class="chartTitle">Mini gráfico: Tmin vs Tmax</div>
+            <canvas id="tempChart" width="640" height="180"></canvas>
+          </div>
+        </section>
+
+        <section class="card side">
+          <h2>Raw (debug)</h2>
+          <pre id="output">{}</pre>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
