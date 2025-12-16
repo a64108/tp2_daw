@@ -34,7 +34,9 @@ function setStatus(msg) {
 function setPill(ok) {
   pillStatus.textContent = ok ? "online" : "offline";
   pillStatus.style.color = ok ? "var(--good)" : "var(--bad)";
-  pillStatus.style.borderColor = ok ? "rgba(61,220,151,.35)" : "rgba(255,107,107,.35)";
+  pillStatus.style.borderColor = ok
+    ? "rgba(61,220,151,.35)"
+    : "rgba(255,107,107,.35)";
 }
 
 function renderCities(list) {
@@ -50,10 +52,11 @@ function renderCities(list) {
 function filterCities(q) {
   const s = q.trim().toLowerCase();
   if (!s) return allCities;
-  return allCities.filter((c) =>
-    (c.name || "").toLowerCase().includes(s) ||
-    (c.district || "").toLowerCase().includes(s) ||
-    String(c.id).includes(s)
+  return allCities.filter(
+    (c) =>
+      (c.name || "").toLowerCase().includes(s) ||
+      (c.district || "").toLowerCase().includes(s) ||
+      String(c.id).includes(s)
   );
 }
 
@@ -102,6 +105,29 @@ function fmtTemp(x) {
   return x == null ? "—" : `${Number(x).toFixed(0)}°C`;
 }
 
+function estimateHourlyTemps(tMin, tMax) {
+  // Modelo simples:
+  // - Tmin por volta das 06:00
+  // - Tmax por volta das 15:00
+  // - curva suave (meia-coseno) a subir e a descer
+  const hours = [...Array(24).keys()];
+  const amp = tMax - tMin;
+
+  return hours.map((h) => {
+    // subida 06->15 (9h)
+    if (h >= 6 && h <= 15) {
+      const x = (h - 6) / 9; // 0..1
+      return tMin + amp * 0.5 * (1 - Math.cos(Math.PI * x));
+    }
+
+    // descida 15->06 do dia seguinte (15h)
+    // para h < 6, considera h+24
+    const hh = h < 6 ? h + 24 : h;
+    const x = (hh - 15) / 15; // 0..1
+    return tMax - amp * 0.5 * (1 - Math.cos(Math.PI * x));
+  });
+}
+
 function drawTempChart(tMin, tMax) {
   const w = canvas.width;
   const h = canvas.height;
@@ -116,52 +142,93 @@ function drawTempChart(tMin, tMax) {
   ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(28, h - 26);
-  ctx.lineTo(w - 18, h - 26);
+  ctx.moveTo(32, h - 26);
+  ctx.lineTo(w - 16, h - 26);
   ctx.stroke();
 
   if (tMin == null || tMax == null) {
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.font = "14px system-ui";
-    ctx.fillText("Sem dados de temperatura para gráfico.", 28, 44);
+    ctx.fillText("Sem dados para gerar estimativa horária.", 32, 44);
     return;
   }
 
-  // scale
-  const minScale = Math.min(tMin, tMax) - 3;
-  const maxScale = Math.max(tMin, tMax) + 3;
+  const temps = estimateHourlyTemps(Number(tMin), Number(tMax));
+  const minY = Math.min(...temps) - 2;
+  const maxY = Math.max(...temps) + 2;
 
-  const x1 = 80, x2 = w - 60;
-  const y = (v) => {
-    const p = (v - minScale) / (maxScale - minScale);
-    return (h - 30) - p * (h - 70);
-  };
+  const padL = 42,
+    padR = 18,
+    padT = 18,
+    padB = 34;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
 
-  // line between min and max
-  ctx.strokeStyle = "rgba(122,167,255,0.9)";
-  ctx.lineWidth = 6;
+  const x = (i) => padL + (i / 23) * plotW; // 0..23
+  const y = (v) => padT + (1 - (v - minY) / (maxY - minY)) * plotH;
+
+  // grid (6h)
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  for (const hh of [0, 6, 12, 18, 23]) {
+    const xx = x(hh);
+    ctx.beginPath();
+    ctx.moveTo(xx, padT);
+    ctx.lineTo(xx, padT + plotH);
+    ctx.stroke();
+  }
+
+  // line
+  ctx.strokeStyle = "rgba(122,167,255,0.95)";
+  ctx.lineWidth = 3;
+  ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(x1, y(tMin));
-  ctx.lineTo(x2, y(tMax));
+  temps.forEach((v, i) => {
+    const xx = x(i);
+    const yy = y(v);
+    if (i === 0) ctx.moveTo(xx, yy);
+    else ctx.lineTo(xx, yy);
+  });
   ctx.stroke();
 
-  // points
-  ctx.fillStyle = "rgba(61,220,151,0.95)";
-  ctx.beginPath();
-  ctx.arc(x1, y(tMin), 7, 0, Math.PI * 2);
-  ctx.fill();
+  // min/max markers
+  const minVal = Math.min(...temps);
+  const maxVal = Math.max(...temps);
+  const iMin = temps.indexOf(minVal);
+  const iMax = temps.indexOf(maxVal);
 
-  ctx.fillStyle = "rgba(255,204,102,0.95)";
-  ctx.beginPath();
-  ctx.arc(x2, y(tMax), 7, 0, Math.PI * 2);
-  ctx.fill();
+  function dot(i, text) {
+    const xx = x(i);
+    const yy = y(temps[i]);
+    ctx.fillStyle = "rgba(61,220,151,0.95)";
+    ctx.beginPath();
+    ctx.arc(xx, yy, 5.5, 0, Math.PI * 2);
+    ctx.fill();
 
-  // labels
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.font = "14px system-ui";
-  ctx.fillText(`Tmin ${tMin}°C`, x1 - 36, y(tMin) - 12);
-  ctx.fillText(`Tmax ${tMax}°C`, x2 - 36, y(tMax) - 12);
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = "12px system-ui";
+    ctx.fillText(text, xx - 18, yy - 10);
+  }
+
+  dot(iMin, `min ${temps[iMin].toFixed(0)}°`);
+  dot(iMax, `max ${temps[iMax].toFixed(0)}°`);
+
+  // x labels
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.font = "12px system-ui";
+  for (const hh of [0, 6, 12, 18, 23]) {
+    ctx.fillText(`${String(hh).padStart(2, "0")}h`, x(hh) - 12, h - 10);
+  }
+
+  // note
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.font = "12px system-ui";
+  ctx.fillText(
+    "Nota: curva estimada a partir de Tmin/Tmax (não é hourly real).",
+    32,
+    14
+  );
 }
 
 async function loadForecast() {
@@ -169,11 +236,15 @@ async function loadForecast() {
   if (!cityId) return;
 
   const city = allCities.find((c) => String(c.id) === String(cityId));
-  const cityName = city ? `${city.name}${city.district ? " (" + city.district + ")" : ""}` : `ID ${cityId}`;
+  const cityName = city
+    ? `${city.name}${city.district ? " (" + city.district + ")" : ""}`
+    : `ID ${cityId}`;
 
   const date = dateInput.value; // YYYY-MM-DD ou ""
   const url = date
-    ? `/forecast?cityId=${encodeURIComponent(cityId)}&date=${encodeURIComponent(date)}`
+    ? `/forecast?cityId=${encodeURIComponent(cityId)}&date=${encodeURIComponent(
+        date
+      )}`
     : `/forecast?cityId=${encodeURIComponent(cityId)}`;
 
   setStatus("A buscar previsão...");
@@ -219,9 +290,13 @@ async function loadForecast() {
   const badge = pickRainBadge(rp);
   badgeRain.textContent = badge.text;
   badgeRain.style.color =
-    badge.tone === "bad" ? "var(--bad)" :
-    badge.tone === "warn" ? "var(--warn)" :
-    badge.tone === "good" ? "var(--good)" : "var(--muted)";
+    badge.tone === "bad"
+      ? "var(--bad)"
+      : badge.tone === "warn"
+      ? "var(--warn)"
+      : badge.tone === "good"
+      ? "var(--good)"
+      : "var(--muted)";
 
   mTmin.textContent = fmtTemp(tmin);
   mTmax.textContent = fmtTemp(tmax);
@@ -232,7 +307,10 @@ async function loadForecast() {
   rainPct.textContent = rp == null ? "—" : `${Number(rp).toFixed(0)}%`;
   setBar(rainFill, rain01);
 
-  const comfort = (tmin != null && tmax != null) ? calcComfort(Number(tmin), Number(tmax), Number(rp ?? 0)) : 0;
+  const comfort =
+    tmin != null && tmax != null
+      ? calcComfort(Number(tmin), Number(tmax), Number(rp ?? 0))
+      : 0;
   comfortPct.textContent = pct(comfort);
   setBar(comfortFill, comfort);
 
