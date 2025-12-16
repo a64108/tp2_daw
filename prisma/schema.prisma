@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model City {
+  id         Int      @id
+  name       String
+  district   String?
+  isActive   Boolean  @default(true)
+
+  forecasts  Forecast[]
+  watchlist  Watchlist?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("cities")
+}
+
+
+model Forecast {
+  id            Int      @id @default(autoincrement())
+  cityId        Int
+  forecastDate  DateTime
+
+  tMin          Float?
+  tMax          Float?
+  precipProb    Float?
+  windClass     String?
+  weatherType   Int?
+  weatherDesc   String?
+  amplitude     Float?
+
+  city          City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([cityId, forecastDate])
+  @@index([forecastDate])
+  @@map("forecasts")
+}
+
+model Watchlist {
+  id        Int      @id @default(autoincrement())
+  cityId    Int
+  label     String?  // ex: "casa", "trabalho"
+
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([cityId])
+  @@map("watchlist")
+}
+
+model SyncRun {
+  id        Int      @id @default(autoincrement())
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+  status    String   // "success" | "error"
+  fetched   Int      @default(0)
+  upserted  Int      @default(0)
+  message   String?
+
+  @@map("sync_runs")
+}
