@@ -1,6 +1,7 @@
 {
   "name": "tp2",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,13 +11,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^7.1.0",
+    "@prisma/client": "^6.19.1",
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "node-cron": "^4.2.1"
   },
   "devDependencies": {
-    "prisma": "^7.1.0"
+    "prisma": "^6.19.1"
   }
 }
