@@ -3,6 +3,9 @@
 
 Este projeto implementa um sistema completo de **integração, processamento, armazenamento e exposição de dados meteorológicos** provenientes do IPMA, recorrendo a uma API REST documentada com Swagger e a um frontend web simples para consumo da API.
 
+Feito por:
+a64108 - André Vieira
+a70563 - Inês Lidório
 ---
 
 ## 1. Tecnologias Utilizadas
